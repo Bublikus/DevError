@@ -32,6 +32,11 @@ import { DevError } from './DevError'
  *
  */
 export const tryToDo = (doFn, options) => (...args) => {
+  if (typeof doFn !== 'function') {
+    console.warn('The tryToDo decorator should take a function as the first argument.')
+    return
+  }
+
   const config = typeof options === 'object' && !Array.isArray(options) && !!options ? options : {}
 
   try {

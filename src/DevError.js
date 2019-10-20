@@ -29,6 +29,7 @@ import { DevErrorObservable } from './observable'
  * ValidationError
  * Normalize ResponseError instance
  * Normalize import modules from different files
+ * Add Mocha tests
  */
 
 // ------------------------------------======================================------------------------------------
