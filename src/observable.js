@@ -56,7 +56,7 @@ export class DevErrorObservable {
    * and pass some data to each of them.
    *
    * @param {*} data - any data sent to subscription.
-   * @param {string} type - key of grouped subscriptions.
+   * @param {string} [type] - key of grouped subscriptions.
    *
    */
   notify(data, type) {

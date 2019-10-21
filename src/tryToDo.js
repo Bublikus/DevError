@@ -1,4 +1,4 @@
-import { DevError } from './DevError'
+import { DevError, ResponseError } from './DevError'
 
 /**
  *
@@ -8,7 +8,7 @@ import { DevError } from './DevError'
  *
  * @param {function} doFn - trying to call a function.
  *
- * @param {object} options - additional options for error.
+ * @param {object} [options] - additional options for error.
  * @param {boolean} [options.throw] - for throwing error.
  * @param {boolean} [options.noConsole] - for hiding console warnings.
  *
@@ -42,7 +42,7 @@ export const tryToDo = (doFn, options) => (...args) => {
   try {
     return doFn(...args)
   } catch (e) {
-    const error = new DevError(e)
+    const error = e && e.status && Number.isFinite(e.status) ? new ResponseError(e) : new DevError(e)
 
     if (!config.noConsole) {
       console.warn(error)

@@ -29,7 +29,6 @@ import { DevErrorObservable } from './observable'
  * ValidationError
  * Normalize ResponseError instance
  * Normalize import modules from different files
- * Add Mocha tests
  */
 
 // ------------------------------------======================================------------------------------------
@@ -104,6 +103,8 @@ export class DevErrorService {
     return {
       status: this.getStatus(config, 0),
       name: this.getName(config, 'DevError'),
+      data: this.toDefaultType(config, 'data', {}),
+      error: this.toDefaultType(config, 'error', {}),
       message: this.getMessage(config, 'Sorry! Error has occurred in the app.'),
       description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
     }
@@ -220,8 +221,55 @@ export class DevErrorService {
   addSpaces(str) {
     return str.replace(/([A-Z])/g, ' $1').trim()
   }
-}
 
+  /**
+   * @description Util for typed getting property from data.
+   *
+   * @param {*} data - any data.
+   * @param {string} field - name of property in the data.
+   * @param {*} defaultValue - return value should have the same type and got property.
+   *
+   * @return {*} - Result of getting correct property from data.
+   *
+   */
+  toDefaultType(data, field, defaultValue) {
+    if (!data || typeof field !== 'string') {
+      return defaultValue
+    }
+
+    function safeGetter(obj, i) {
+      try {
+        return obj[i]
+      } catch (e) {
+        return undefined
+      }
+    }
+
+    const result = field.split('.').reduce(safeGetter, data)
+    return defaultValue !== undefined
+      ? this.isSameType(result, defaultValue) ? result : defaultValue
+      : result
+  }
+
+  /**
+   * @description Util for checking whether type of a is the same as type of b.
+   *
+   * @param {*} a - any data.
+   * @param {*} b - any data.
+   *
+   * @return {boolean}
+   *
+   */
+  isSameType(a, b) {
+    const rules = [
+      (aa, bb) => typeof aa === typeof bb,
+      (aa, bb) => (+aa === aa) === (+bb === bb),            // whether one is NaN
+      (aa, bb) => (aa === null) === (bb === null),          // null is object type too
+      (aa, bb) => Array.isArray(aa) === Array.isArray(bb),  // array is object type too
+    ]
+    return !rules.some(ruleFn => !ruleFn(a, b))
+  }
+}
 // ------------------------------------======================================------------------------------------
 
 /**
@@ -262,7 +310,7 @@ export class ResponseErrorService extends DevErrorService {
   /**
    *
    * @param {object} error - original error.
-   * @param {object} options - properties of an error.
+   * @param {object} [options] - properties of an error.
    *
    * @return {object} - Enhanced config.
    *
@@ -319,6 +367,8 @@ export class ResponseErrorService extends DevErrorService {
           ...config,
           name: this.getName(config, 'Informational'),
           status: this.getStatus(config, 0),
+          data: this.toDefaultType(config, 'data', {}),
+          error: this.toDefaultType(config, 'error', {}),
           message: this.getMessage(config, 'Informational error has occurred in the app.'),
           description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
         }
@@ -329,6 +379,8 @@ export class ResponseErrorService extends DevErrorService {
           name: this.getName(config, 'Success'),
           status: this.getStatus(config, 0),
           message: this.getMessage(config, 'Great!'),
+          data: this.toDefaultType(config, 'data', {}),
+          error: this.toDefaultType(config, 'error', {}),
           description: this.getDescription(config, `All data was saved!`),
         }
       },
@@ -337,6 +389,8 @@ export class ResponseErrorService extends DevErrorService {
           ...config,
           name: this.getName(config, 'Redirection'),
           status: this.getStatus(config, 0),
+          data: this.toDefaultType(config, 'data', {}),
+          error: this.toDefaultType(config, 'error', {}),
           message: this.getMessage(config, 'Oops. Redirection error has occurred in the app.'),
           description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
         }
@@ -346,6 +400,8 @@ export class ResponseErrorService extends DevErrorService {
           ...config,
           name: this.getName(config, 'Client'),
           status: this.getStatus(config, 0),
+          data: this.toDefaultType(config, 'data', {}),
+          error: this.toDefaultType(config, 'error', {}),
           message: this.getMessage(config, 'Oops. Wrong data goes from the client side.'),
           description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
         }
@@ -355,6 +411,8 @@ export class ResponseErrorService extends DevErrorService {
           ...config,
           name: this.getName(config, 'Server'),
           status: this.getStatus(config, 0),
+          data: this.toDefaultType(config, 'data', {}),
+          error: this.toDefaultType(config, 'error', {}),
           message: this.getMessage(config, 'Oops. Wrong data goes from the server side.'),
           description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
         }
