@@ -71,7 +71,6 @@ export class DevError extends Error {
     this.message = config.message
     this.description = config.description
     this.created = devErrorService.getISOTime()
-    this.kind = devErrorService.addSpaces(config.name)
 
     if (typeof config.name === 'string' && config.name !== this.constructor.name) {
       devErrorObservable.notify(config, config.name)
@@ -293,7 +292,6 @@ export class ResponseError extends DevError {
     this.message = config.message
     this.description = config.description
     this.created = this.config.created
-    this.kind = responseErrorService.addSpaces(config.name)
   }
 }
 
