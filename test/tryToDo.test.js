@@ -1,6 +1,9 @@
 import { expect } from 'chai'
 import { tryToDo } from '../src/tryToDo'
-import { DevError, ResponseError } from '../src/DevError'
+
+import { DevError } from '../src/DevError'
+import { ResponseError } from '../src/ResponseError'
+import { ValidationError } from '../src/ValidationError'
 
 const types = [
   () => {},
@@ -34,6 +37,18 @@ function iDoResponseError(status) {
   throw { status }
 }
 
+function throwValidationError() {
+  throw {
+    errorFields: {
+      'name': 'Error in field name',
+      'message': ['Error in field message', 'Message is required'],
+      'phone': { a: 1 },
+      'form': ['Error in field form', { b: 2 }, 'Form is required', null, ''],
+    }
+  }
+}
+
+
 describe('tryToDo function', () => {
 
   it('any value as an argument in tryToDo decorator should return a function.', () => {
@@ -63,6 +78,10 @@ describe('tryToDo function', () => {
 
   it('any error function with integer number more than 0 in "status" field must return instance of ResponseError class.', () => {
     expect(tryToDo(iDoResponseError, { noConsole: true })(300)).to.be.instanceof(ResponseError)
+  })
+
+  it('any error function with valid "errorFields" object in error or in options must return instance of ValidationError class.', () => {
+    expect(tryToDo(throwValidationError, { noConsole: true })()).to.be.instanceof(ValidationError)
   })
 
   it('any error function with integer number 0 in "status" field must return instance of DevError class.', () => {

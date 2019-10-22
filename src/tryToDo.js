@@ -1,4 +1,6 @@
-import { DevError, ResponseError } from './DevError'
+import { DevError } from './DevError'
+import { ResponseError, ResponseErrorService } from './ResponseError'
+import { ValidationError, ValidationErrorService } from './ValidationError'
 
 /**
  *
@@ -11,6 +13,7 @@ import { DevError, ResponseError } from './DevError'
  * @param {object} [options] - additional options for error.
  * @param {boolean} [options.throw] - for throwing error.
  * @param {boolean} [options.noConsole] - for hiding console warnings.
+ * @param {object} [options.errorFields] - { [label of a field]: (string | string[]) - about field validation error. }
  *
  * @throws {object} - enhanced error with information.
  * @return {object} - enhanced error with information.
@@ -42,7 +45,13 @@ export const tryToDo = (doFn, options) => (...args) => {
   try {
     return doFn(...args)
   } catch (e) {
-    const error = e && e.status && Number.isFinite(e.status) ? new ResponseError(e) : new DevError(e)
+
+    let error = new DevError(e, options)
+    if (ResponseErrorService.isResponseError(e, options)) {
+      error = new ResponseError(e, options)
+    } else if (ValidationErrorService.isValidationError(e, options)) {
+      error = new ValidationError(e, options)
+    }
 
     if (!config.noConsole) {
       console.warn(error)

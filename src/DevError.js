@@ -24,13 +24,6 @@ import { DevErrorObservable } from './observable'
  * Server - Server error responses.
  */
 
-/**
- * @TODO
- * ValidationError
- * Normalize ResponseError instance
- * Normalize import modules from different files
- */
-
 // ------------------------------------======================================------------------------------------
 
 /**
@@ -42,19 +35,7 @@ import { DevErrorObservable } from './observable'
  */
 export class DevError extends Error {
   constructor(error, options) {
-    const devErrorService = new DevErrorService()
-    const devErrorObservable = new DevErrorObservable()
-    const responseErrorService = new ResponseErrorService()
-
-    let config = typeof options === 'object' && !Array.isArray(options) && !!options ? options : {}
-    config.error = error
-    const status = (config.error || {}).status
-
-    if (status > 0) {
-      config = responseErrorService.getConfig(error, options)
-    } else {
-      config = devErrorService.getConfig(config)
-    }
+    const config = DevErrorService.getConfig(error, options)
 
     super(config.message)
 
@@ -70,8 +51,9 @@ export class DevError extends Error {
     this.status = config.status
     this.message = config.message
     this.description = config.description
-    this.created = devErrorService.getISOTime()
+    this.created = DevErrorService.getISOTime()
 
+    const devErrorObservable = new DevErrorObservable()
     if (typeof config.name === 'string' && config.name !== this.constructor.name) {
       devErrorObservable.notify(config, config.name)
     }
@@ -93,19 +75,23 @@ export class DevErrorService {
    *
    * @description Coordinator for getting config from smaller actions.
    *
-   * @param {object} config - properties of the error.
+   * @param {object} error - original error.
+   * @param {object} [options] - properties of the error.
    *
    * @return {object} - Enhanced config.
    *
    */
-  getConfig(config) {
+  static getConfig(error, options) {
+    const config = DevErrorService.toDefaultType(options, '', {})
+    config.error = error
+
     return {
-      status: this.getStatus(config, 0),
-      name: this.getName(config, 'DevError'),
-      data: this.toDefaultType(config, 'data', {}),
-      error: this.toDefaultType(config, 'error', {}),
-      message: this.getMessage(config, 'Sorry! Error has occurred in the app.'),
-      description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
+      status: DevErrorService.getStatus(config, 0),
+      name: DevErrorService.getName(config, 'DevError'),
+      data: DevErrorService.toDefaultType(config, 'data', {}),
+      error: DevErrorService.toDefaultType(config, 'error', {}),
+      message: DevErrorService.getMessage(config, 'Sorry! Error has occurred in the app.'),
+      description: DevErrorService.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
     }
   }
 
@@ -113,7 +99,7 @@ export class DevErrorService {
    *
    * @description Util for getting message from custom, error and default values.
    *
-   * @param {object} config - properties of the error.
+   * @param {object} options - properties of the error.
    * @param {string} defaultVal - default value.
    *
    * @return {string} - New normalized message.
@@ -122,13 +108,19 @@ export class DevErrorService {
    * getMessage(config) === '...blah...bla... Dev Error ...blah!'
    *
    */
-  getMessage(config, defaultVal) {
-    const isNoInternet = (config.error || {}).message === 'Failed to fetch'
-    const errorName = config.name || (config.error || {}).name
+  static getMessage(options, defaultVal) {
+    const config = DevErrorService.toDefaultType(options, '', {})
+
+    const appErrorMsg = DevErrorService.toDefaultType(config, 'error.message', '')
+    const isNoInternet = appErrorMsg === 'Failed to fetch'
+
+    const appErrorName = DevErrorService.toDefaultType(config, 'error.name', '')
+    const errorName = config.name || appErrorName
+
     return (typeof config.error === 'string' && config.error)
       || config.message
       || (isNoInternet && `You have no internet connection.`)
-      || (errorName && `Sorry! ${this.addSpaces(errorName)} has occurred in the app.`)
+      || (errorName && `Sorry! ${DevErrorService.addSpaces(errorName)} has occurred in the app.`)
       || defaultVal
   }
 
@@ -136,7 +128,7 @@ export class DevErrorService {
    *
    * @description Util for getting description from custom, error and default values.
    *
-   * @param {object} config - properties of the error.
+   * @param {object} options - properties of the error.
    * @param {string} defaultVal - default value.
    *
    * @return {string} - New normalized description.
@@ -145,9 +137,12 @@ export class DevErrorService {
    * getDescription(config) === '...blah...bla... Dev Error ...blah!'
    *
    */
-  getDescription(config, defaultVal) {
-    const appErrorMsg = (config.error || {}).message
+  static getDescription(options, defaultVal) {
+    const config = DevErrorService.toDefaultType(options, '', {})
+
+    const appErrorMsg = DevErrorService.toDefaultType(config, 'error.message', '')
     const isNoInternet = appErrorMsg === 'Failed to fetch'
+
     return config.description
       || (isNoInternet && `Make sure you are online.`)
       || (appErrorMsg && `This feature probably does not work properly, cause of in-app error: "${appErrorMsg}".\nPlease, notify us and we'll fix it.`)
@@ -158,7 +153,7 @@ export class DevErrorService {
    *
    * @description Util for getting name for error from custom, error and default values.
    *
-   * @param {object} config - properties of the error.
+   * @param {object} options - properties of the error.
    * @param {string} defaultVal - default value.
    *
    * @return {string} - Custom name of an error.
@@ -167,12 +162,17 @@ export class DevErrorService {
    * getName(config) === 'DevError'
    *
    */
-  getName(config, defaultVal) {
-    const appErrorMsg = (config.error || {}).message
+  static getName(options, defaultVal) {
+    const config = DevErrorService.toDefaultType(options, '', {})
+
+    const appErrorMsg = DevErrorService.toDefaultType(config, 'error.message', '')
     const isNoInternet = appErrorMsg === 'Failed to fetch'
-    return config.name
-      || (isNoInternet && 'ConnectionError')
-      || (config.error || {}).name
+
+    const appErrorName = DevErrorService.toDefaultType(config, 'error.name', '')
+    const errorName = config.name || appErrorName
+
+    return (isNoInternet && 'ConnectionError')
+      || errorName
       || defaultVal
   }
 
@@ -180,7 +180,7 @@ export class DevErrorService {
    *
    * @description Util for getting status of an error from custom, error and default values.
    *
-   * @param {object} config - properties of the error.
+   * @param {object} options - properties of the error.
    * @param {number} defaultVal - default value.
    *
    * @return {number} - status of an error. 0 - dev error.
@@ -189,10 +189,13 @@ export class DevErrorService {
    * getName(config) === 200
    *
    */
-  getStatus(config, defaultVal) {
-    return config.status
-      || (config.error || {}).status
-      || defaultVal
+  static getStatus(options, defaultVal) {
+    const config = DevErrorService.toDefaultType(options, '', {})
+
+    const appErrorStatus = DevErrorService.toDefaultType(config, 'error.status', 0)
+    const errorStatus = config.status !== undefined ? config.status : appErrorStatus
+
+    return errorStatus || defaultVal
   }
 
   /**
@@ -205,7 +208,7 @@ export class DevErrorService {
    * getISOTime() === '2019-10-17T21:55:49.365Z'
    *
    */
-  getISOTime() {
+  static getISOTime() {
     return new Date().toISOString()
   }
 
@@ -217,7 +220,7 @@ export class DevErrorService {
    * @return {string} - Changed string with spaces.
    *
    */
-  addSpaces(str) {
+  static addSpaces(str) {
     return str.replace(/([A-Z])/g, ' $1').trim()
   }
 
@@ -225,28 +228,31 @@ export class DevErrorService {
    * @description Util for typed getting property from data.
    *
    * @param {*} data - any data.
-   * @param {string} field - name of property in the data.
+   * @param {*|string} field - name of property in the data.
    * @param {*} defaultValue - return value should have the same type and got property.
    *
    * @return {*} - Result of getting correct property from data.
    *
    */
-  toDefaultType(data, field, defaultValue) {
+  static toDefaultType(data, field, defaultValue) {
+    field = field || ''
+
     if (!data || typeof field !== 'string') {
       return defaultValue
     }
 
     function safeGetter(obj, i) {
       try {
-        return obj[i]
+        return !!i ? obj[i] : obj
       } catch (e) {
         return undefined
       }
     }
 
     const result = field.split('.').reduce(safeGetter, data)
+
     return defaultValue !== undefined
-      ? this.isSameType(result, defaultValue) ? result : defaultValue
+      ? DevErrorService.isSameType(result, defaultValue) ? result : defaultValue
       : result
   }
 
@@ -259,7 +265,7 @@ export class DevErrorService {
    * @return {boolean}
    *
    */
-  isSameType(a, b) {
+  static isSameType(a, b) {
     const rules = [
       (aa, bb) => typeof aa === typeof bb,
       (aa, bb) => (+aa === aa) === (+bb === bb),            // whether one is NaN
@@ -268,175 +274,7 @@ export class DevErrorService {
     ]
     return !rules.some(ruleFn => !ruleFn(a, b))
   }
-}
-// ------------------------------------======================================------------------------------------
 
-/**
- *
- * @class ResponseError
- *
- * @description Core class of Response error.
- *
- */
-export class ResponseError extends DevError {
-  constructor(error, options) {
-    super(error, options)
-
-    const responseErrorService = new ResponseErrorService()
-    const config = responseErrorService.getConfig(error, options)
-
-    this.name = config.name
-    this.data = config.data
-    this.error = config.error
-    this.status = config.status
-    this.message = config.message
-    this.description = config.description
-    this.created = this.config.created
-  }
-}
-
-// ------------------------------------======================================------------------------------------
-
-/**
- *
- * @class ResponseErrorService
- *
- * @description Service of the core class of Response error.
- *
- */
-export class ResponseErrorService extends DevErrorService {
-  /**
-   *
-   * @param {object} error - original error.
-   * @param {object} [options] - properties of an error.
-   *
-   * @return {object} - Enhanced config.
-   *
-   * @examples
-   * getConfig(config) === {...}
-   *
-   */
-  getConfig(error, options) {
-    let config = typeof options === 'object' && !Array.isArray(options) && !!options ? options : {}
-    config.error = error
-    this.config = config
-    const status = (config.error || {}).status
-
-    if (status > 0 && status < 200) {
-      return this.getErrorConfigFor('informational')
-    } else if (status >= 200 && status < 300) {
-      return this.getErrorConfigFor('success')
-    } else if (status >= 300 && status < 400) {
-      return this.getErrorConfigFor('redirection')
-    } else if (status >= 400 && status < 500) {
-      return this.getErrorConfigFor('client')
-    } else if (status >= 500) {
-      return this.getErrorConfigFor('server')
-    } else {
-      return new DevErrorService().getConfig(config)
-    }
-  }
-
-  /**
-   *
-   * @param {string} type - key of subscriptions group.
-   *
-   * @return {object} - Enhanced config.
-   *
-   * @examples
-   * getErrorConfigFor('informational') === {...}
-   *
-   */
-  getErrorConfigFor(type) {
-    return this.errorTypes(this.config)[type]()
-  }
-
-  /**
-   *
-   * @param {object} config - properties of an error.
-   *
-   * @description Returns object of actions by given type.
-   *
-   */
-  errorTypes(config) {
-    return {
-      informational: () => {
-        return {
-          ...config,
-          name: this.getName(config, 'Informational'),
-          status: this.getStatus(config, 0),
-          data: this.toDefaultType(config, 'data', {}),
-          error: this.toDefaultType(config, 'error', {}),
-          message: this.getMessage(config, 'Informational error has occurred in the app.'),
-          description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
-        }
-      },
-      success: () =>  {
-        return {
-          ...config,
-          name: this.getName(config, 'Success'),
-          status: this.getStatus(config, 0),
-          message: this.getMessage(config, 'Great!'),
-          data: this.toDefaultType(config, 'data', {}),
-          error: this.toDefaultType(config, 'error', {}),
-          description: this.getDescription(config, `All data was saved!`),
-        }
-      },
-      redirection: () =>  {
-        return {
-          ...config,
-          name: this.getName(config, 'Redirection'),
-          status: this.getStatus(config, 0),
-          data: this.toDefaultType(config, 'data', {}),
-          error: this.toDefaultType(config, 'error', {}),
-          message: this.getMessage(config, 'Oops. Redirection error has occurred in the app.'),
-          description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
-        }
-      },
-      client: () =>  {
-        return {
-          ...config,
-          name: this.getName(config, 'Client'),
-          status: this.getStatus(config, 0),
-          data: this.toDefaultType(config, 'data', {}),
-          error: this.toDefaultType(config, 'error', {}),
-          message: this.getMessage(config, 'Oops. Wrong data goes from the client side.'),
-          description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
-        }
-      },
-      server: () =>  {
-        return {
-          ...config,
-          name: this.getName(config, 'Server'),
-          status: this.getStatus(config, 0),
-          data: this.toDefaultType(config, 'data', {}),
-          error: this.toDefaultType(config, 'error', {}),
-          message: this.getMessage(config, 'Oops. Wrong data goes from the server side.'),
-          description: this.getDescription(config, `This feature probably does not work properly. Please, notify us and we'll fix it.`),
-        }
-      },
-    }
-  }
-
-  /**
-   *
-   * @param {object} config - properties of error.
-   * @param {object|string} config.error - original error.
-   * @param {string?} config.message - custom dev message title.
-   *
-   * @param {string} defaultVal - default message.
-   *
-   * @return {string} - New normalized message
-   *
-   * @examples
-   * getMessage(config) === '...blah...bla... Response Error ...blah!'
-   *
-   */
-  getMessage(config, defaultVal) {
-    return (typeof config.error === 'string' && config.error)
-      || config.message
-      || defaultVal
-  }
 }
 
 // ------------------------------------======================================------------------------------------
